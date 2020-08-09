@@ -1,0 +1,97 @@
+---
+title: 'STA 380 Exercises - ABIA'
+output: html_document
+---
+```{r setup, include =FALSE}
+library(arules)
+library(stats)
+library(ggplot2)
+library(arulesViz)
+library(dichromat)
+library(XML)
+library(reshape2)
+```
+
+# Flights at ABIA
+## Assignment:
+
+Create a set of related figures that tell an interesting story about flights into and out of Austin.
+
+## Solution: 
+
+```{r echo=FALSE}
+#read in data file
+setwd('~/Documents/STA 380/Exercises')
+fly_data = read.csv('ABIA.csv')
+attach(fly_data)
+#colnames(fly_data)
+#dim(fly_data)
+```
+
+```{r echo=FALSE, warning=FALSE}
+#arrival delay by departure delay
+p1 = ggplot(aes(x=DepDelay,y=ArrDelay), data=fly_data)
+p1 + geom_point(aes(colour=Distance)) + geom_abline(color='black') + labs(x="Departure Delay (minutes)", y="Arrival Delay (minutes)") + ggtitle("Arrival vs Departure Delay") 
+#+ scale_colour_gradient(colorschemes$LightBluetoDarkBlue.10)
+```
+
+First we plot the relationship between departure and arrival delays. This result shows, unsurprisingly, that there is a naturally linear relationship y=x. Arrival delays have a tendency to be higher, suggesting delays in-air or potentially instances where a runway is not immediately available. Because arrival delays tend to have a great influence on flying experience, we will use arrival delays in our analysis.
+<br>
+<br>
+<br>
+<br>
+```{r echo=FALSE, warning = FALSE}
+#arrival delay by day of month
+p2a = ggplot(aes(x=DayofMonth, y=ArrDelay), data=fly_data)
+p2a + geom_point(aes(colour=Distance)) +  stat_summary(fun.y="mean", geom='line', color='black') + labs(x="Day of Month", y="Arrival Delay (mins)") + ggtitle("Delays by Day of the Month")
+
+m1 = (aggregate(ArrDelay ~ DayofMonth, fly_data, mean))
+barplot(m1$ArrDelay ~ m1$DayofMonth, xlab='Day of Month', ylab='Average Delay')
+```
+
+```{r echo=FALSE, warning = FALSE}
+#arrival delay by day of the week
+p2b = ggplot(aes(x=DayOfWeek, y=ArrDelay), data=fly_data)
+p2b + geom_point(aes(colour=Distance)) +  stat_summary(fun.y="mean", geom='line', color='black') + labs(x="Day of Week", y="Arrival Delay (mins)") + ggtitle("Delays by Day of the Week")
+
+w1 = (aggregate(ArrDelay ~ DayOfWeek, fly_data, mean))
+barplot(w1$ArrDelay ~ w1$DayOfWeek, xlab='Day of Week', ylab='Average Delay')
+```
+
+To determine if there are any days to avoid flying, arrival delay is plotted against day of the month and day of the week. While there are some slight deviations, the average delay remains just slightly above 0 minutes in each plot. 3 days of the month have average delays over 10 minutes, the 18th, 22nd and 27th. Thursday has the highest average delay at 9.55 minutes.
+
+<br>
+<br>
+<br>
+<br>
+```{r echo=FALSE, warning=FALSE}
+#arrival delay by departure time
+p3 = ggplot(aes(x=DepTime, y=ArrDelay), data = fly_data)
+p3 + geom_point(aes(colour=Distance)) + labs(x="Departure Time (24hr)", y="Arrival Delay (mins)") + ggtitle("Best Departure Time")
+```
+
+Next, we look at the best time of day to fly. Intuitively, as the day goes on, delays appear to grow. This follows a common idea that if flights in the morning are delayed, it imparts a domino effect on flights throughout the day. The best time to schedule a flight to avoid a delay is between 5am and 8am.
+<br>
+<br>
+<br>
+<br>
+```{r echo = FALSE, warning=FALSE}
+p4 = ggplot(aes(x=Dest, y=ArrDelay), data = fly_data)
+p4 + stat_summary(fun.y="mean", geom='bar', aes(colour=ArrDelay)) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x="Destination", y="Average Arrival Delay (mins)") + ggtitle("Delays by Destination")
+
+#DSM bad
+#FLL, IND, PHL, SLC, TUL good
+```
+
+Are there any airports to avoid? Based on average arrival delay, Des Moines (DSM) is the clear loser in terms of average delay, by a wide margin. In contrast, flights going into Fort Lauderdale (FLL), Indianapolis (IND), Philadelphia (PHL), Salt Lake City (SLC), and Tulsa (TUL), on average, all arrive ahead of schedule. These are the best airports to fly into if leaving Austin and looking to avoid a delay. 
+
+```{r echo = FALSE, warning=FALSE}
+p5 = ggplot(aes(x=UniqueCarrier), data = fly_data) +
+  geom_bar(fill='blue', position='dodge') +
+  ggtitle('Number of Flights by Carrier') + 
+  labs(x="Carrier Name", y="Number of Flights")
+  
+print(p5)
+```
+
+Which carriers fly out of Austin the most?
