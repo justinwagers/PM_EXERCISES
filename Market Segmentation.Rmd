@@ -38,7 +38,7 @@ mu = attr(X,"scaled:center")
 sigma = attr(X,"scaled:scale")
 ```
 
-```{r , echo=FALSE}
+```{r , echo=FALSE, message = FALSE}
 #Choose value of k
 #WARNING: This takes a while
 library(cluster)
@@ -48,7 +48,7 @@ plot(SM_gap, main = 'Gap Statistic vs. Number of Clusters')
   
 
 
-From this gap statistic plot, we are not getting a clear definition of what number of clusters to choose, and the data is not converging cleanly before k =10. However, we do see a slight kink at both k=5 and k=7, and decide to choose 5 clusters to hopefully identify easily interpretable market segments within the NutrientH20 social media following.  
+With no clearn kinks in this gap statistic plot, we are not getting a clear definition of what number of clusters to choose, and the data is not converging cleanly before k =10. However, we decide to choose 5 clusters to hopefully identify easily interpretable market segments within the NutrientH20 social media following.  
 
 Now we can construct our k-means clustering with k=5 and 25 initial configurations. The k-means algorithm clusters by the following percentages (we will look at the characteristics of these clusters shortly):  
 
