@@ -16,19 +16,8 @@ knitr::opts_chunk$set(fig.width=5, fig.height=4)
   
   From a basic sweep over the various topics, one might assume that some are more correlated than others. For instance, those tweeting about Health and Nutrition are likely to be the same people tweeting about personal fitness. However, given the multitude of possible groupings of these topics, we will want to automate the process. For that, we conduct a k-means clustering analysis. While most of the topics are relevant, we have removed the "chatter" and "uncategorized" topics from our topic list as they appear to have been used by annotators to classify tweets that didn't fit into other categories. They likely represent a multitude of topics so we omit them to avoid the k-means model assuming that they represent one topic.  
   
-  To choose the optimal number of clusters, we first look at the Gap Statistic for various values of k.     
+  To choose the optimal number of clusters, we first look at the Gap Statistic for various values of k.  
   
-```{r , echo=FALSE}
-#Choose value of k
-library(cluster)
-SM_gap = clusGap(X, FUN = kmeans, nstart = 50, K.max = 10, B = 5)
-plot(SM_gap, main = 'Gap Statistic vs. Number of Clusters')
-```
-  
-
-
-From this gap statistic plot, we are not getting a clear definition of what number of clusters to choose, and the data is not converging cleanly before k =10. However, we do see a slight kink at both k=5 and k=7, and decide to choose 5 clusters to hopefully identify easily interpretable market segments within the NutrientH20 social media following.  
-
 ```{r, include= FALSE}
 #### Import Data
 library(readr)
@@ -48,6 +37,18 @@ X = na.omit(X)
 mu = attr(X,"scaled:center")
 sigma = attr(X,"scaled:scale")
 ```
+
+```{r , echo=FALSE}
+#Choose value of k
+#WARNING: This takes a while
+library(cluster)
+SM_gap = clusGap(X, FUN = kmeans, nstart = 50, K.max = 10, B = 5)
+plot(SM_gap, main = 'Gap Statistic vs. Number of Clusters')
+```
+  
+
+
+From this gap statistic plot, we are not getting a clear definition of what number of clusters to choose, and the data is not converging cleanly before k =10. However, we do see a slight kink at both k=5 and k=7, and decide to choose 5 clusters to hopefully identify easily interpretable market segments within the NutrientH20 social media following.  
 
 Now we can construct our k-means clustering with k=5 and 25 initial configurations. The k-means algorithm clusters by the following percentages (we will look at the characteristics of these clusters shortly):  
 
