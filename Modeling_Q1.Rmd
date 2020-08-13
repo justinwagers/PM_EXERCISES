@@ -1,0 +1,91 @@
+---
+title: "Modeling Final, Q. 1"
+output: pdf_document
+---
+###1
+
+From the beginning, I'm suspicious of the excel guru's analysis because first, he cut out buildings that had less than 10% occupancy. This did not take into account the age of the building. If it was developed in the last six months or a year, this less than 10% rule should not be applicable to the building. Yes, there are cases where this less than 10% metric could be a telling factor of the quality of the building or administration, it should not be used as a blanket statement that <=10% occupancy is bad. Secondly, he just took an average of the rent of non-green buildings and green buildings to then forecast premium rent rates of green buildings. He completely disregarded the 21 other variables that could have been used. 
+
+```{r setup, include=FALSE}
+library(mosaic)
+library(ggplot2)
+library(tidyverse)
+library(ggplot2)
+library(pairwise)
+buildings <- read.csv('https://raw.githubusercontent.com/jgscott/STA380/master/data/greenbuildings.csv')
+attach(buildings)
+buildings$green_rating = as.factor(buildings$green_rating)
+#Plotting Rent as a function of Size
+ggplot(buildings, aes(size, Rent)) +
+  geom_point(aes(color = green_rating)) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Rent as a function of Size",
+       x = 'Total Size in Sq. Ft.',
+       y = 'Rent per Square Foot, per Year',
+       colour = 'Green Rating (0 or 1)') + 
+  scale_fill_manual(values = c('navyblue', 'green1'))
+```
+This initial plot shows how Rent changes as the total size of the building increases. While the fitted line is not a good predictor, we can see that the rent price does increase as size of the building increases.
+
+
+###2
+```{r echo=FALSE}
+g = ggplot(buildings, aes(x=Rent))
+g + geom_density(aes(fill=factor(green_rating)),alpha = 0.6) + labs(title='Standard vs Green Density') +
+  scale_fill_manual(values = c('navyblue', 'green1'))
+```
+Here we can see that while green buildings have a slightly higher median compared to standard buildings, they are practically identical. We must look into more variables to get a better idea.
+
+###3
+```{r echo=FALSE}
+ggplot(buildings, aes(age, Rent)) +
+  geom_point(aes(color = green_rating)) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Rent as a function of Age",
+       x = 'Age (Years)',
+       y = 'Rent per Square Foot, per Year',
+       colour = 'Green Rating (0 or 1)') +
+  scale_fill_manual(values = c('navyblue', 'green1'))
+```
+With age, we can see that there is a gradual decrease in rent as the building ages, but there are many outliers that charge very high rent rates.  
+
+###4
+```{r echo=FALSE}
+temp = buildings$class_a-buildings$class_b
+buildings$class[temp == -1] = 'b'
+buildings$class[temp == 0] = 'c'
+buildings$class[temp == 1] = 'a'
+
+ggplot(data=buildings, aes(x=class, y=Rent)) +
+         geom_point(mapping=aes(x=class, y=Rent, colour=green_rating)) +
+        geom_boxplot() + 
+  labs(title='Box plot for each class type', x='Class') + 
+  scale_fill_manual(values = c('navyblue', 'green1'))
+        
+```
+After seeing how Rent changes as a function of numeric variables age and size, we wanted to see how class affects rent. Of course, the highest class building, class A has the highest median and range, followed by B then C.
+
+###5
+```{r echo=FALSE}
+library(ggplot2)
+building_a_count = sum(buildings$class =='a')
+a_proportion = (building_a_count/nrow(buildings))*100
+building_b_count = sum(buildings$class == 'b')
+b_proportion = (building_b_count/nrow(buildings))*100
+building_c_count = sum(buildings$class == 'c')
+c_proportion = (building_c_count/nrow(buildings))*100
+
+green_a_prop = (sum(buildings$class == 'a' & buildings$green_rating == 1)/sum(buildings$green_rating == 1))*100
+green_b_prop = (sum(buildings$class == 'b' & buildings$green_rating == 1)/sum(buildings$green_rating == 1))*100
+green_c_prop = (sum(buildings$class == 'c' & buildings$green_rating == 1)/sum(buildings$green_rating == 1))*100
+green_a = sum(buildings$class == 'a' & buildings$green_rating == 1)
+green_c = sum(buildings$class == 'c' & buildings$green_rating == 1)
+green_b = sum(buildings$class == 'b' & buildings$green_rating == 1)
+ggplot(buildings, aes(x=class, y=..count..)) + 
+  geom_bar(aes(fill=green_rating)) +
+  scale_fill_manual(values = c('navyblue', 'green1'), name='Standard vs. Green') + 
+  labs(x='Class', y='Count') +
+  ggtitle('Proportion of Green vs. Standard', 'Proportion of green buildings that are class A = 79.71% (546)\nProportion of green buildings that are class B = 19.27% (132)\nProportion of green buildings that are class C = 1.02% (7)')
+
+```
+Here we can see that out of the three classes, green has it's highest number in class A. As we saw above, class A is also the most expensive classification of building. Based on green buildings being nearly 80% class A, one can claim that there is a positive correlation between green status and higher rent prices; if someone were to randomly pick a green building, 4/5 times they would choose a class A, the highest price class.  
