@@ -15,6 +15,9 @@ library(pairwise)
 buildings <- read.csv('https://raw.githubusercontent.com/jgscott/STA380/master/data/greenbuildings.csv')
 attach(buildings)
 buildings$green_rating = as.factor(buildings$green_rating)
+```
+
+```{r echo=FALSE}
 #Plotting Rent as a function of Size
 ggplot(buildings, aes(size, Rent)) +
   geom_point(aes(color = green_rating)) +
