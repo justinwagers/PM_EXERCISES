@@ -1,0 +1,183 @@
+---
+title: "Portfolio Modelling"
+author: "Christian Lee"
+date: "8/16/2020"
+output: html_document
+---
+# Portfolio Modelling
+
+```{r, echo=FALSE}
+library(mosaic)
+library(quantmod)
+library(foreach)
+
+mystocks = c('EMB','IEF','DVY','VIXY','XLF','XLV','VGK','XLP','QLD','IWN')
+getSymbols(mystocks, from='2015-08-10')
+
+#Adjusting for splits
+for(ticker in mystocks) {
+  expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+  eval(parse(text=expr))
+}
+
+```
+## Selecting the ETFS:
+### In constructing our portfolio of ETF's we wanted to select a subgroup that could itself be arranged into separate portfolios of differing characteristics, but still be sufficiently diversified. Our first selection was EMB, J.P. Morgan's emerging markets bond ETF, chosen due to recent data showing emerging market bond's outperforming US and European bond ETFs. We then chose IEF, an ETF tracking 7-10 year treasury bonds, generally seen as a relatively safe, albeit underperforming, fixed income group. DVY, the iShares Select Dividend ETF, was chosen to provide our portfolio some consistent income. VIXY, a short-term volatility index, was chosen to take advantage of the current levels of volatility. XLF, the Financial Sector Select SPDR fund, was chosen to take advantage of the returns that financial services tend to provide, but have provided in a surprising way during the COVID recession. XLV is a Health Care index and was chosen as somewhat of a bet that health care related firms would be receiving some level of stimulus and a lot of attention, both from customers and investors, as treatments for COVID and distribution of PPE is widely sought after. Chosing VGK, the Vanguard FTSE Europe ETF, was due in large part to the recent stimulus package approved by EU nations that should bolster the gradual reopening we are seeing in Europe that should lead to some positive returns over the coming quarters for EU based firms. Furthermore, gaining exposure to Europe, the only major market so far neglected in the portfolio provides some naive diversification at the very least. XLP is a consumer staples ETF that should see some positive returns, and has had some very positive returns over the last 6 months, as customers are rushing to stock up on staple goods. QLD is a leveraged equity ETF that tracks the Nasdaq-100 index and seeks to return 2x the returns of the its underlying index. Given the recent returns of tech companies, which make up a considerable portion of the Nasdaq, which should continue as the US remains relatively locked down, this seemed like a very safe investment. Finally, the IWN, which tracks the Russell 2000, was chosen as a means of gaining exposure to small-cap value stocks, securities that have seen generally positive returns over growth stocks, and idea that serves as the basis for the Fama-French valuation model.
+
+
+## Selecting the First Portfolio
+### While a three security portfolio is generally never a great idea, due to lack of diversification, we decided to construct one anyways to at least prove in subsequent iterations why more securities in a portfolio will generally provide better, or less volatile, returns. 
+
+### The portfolio selected included our IEF, DVY, and VGK ETFs, which represent our safest selections. Fixed income and dividends, mixed with a European equity ETF, should provide relatively stable returns without introducing much risk. The first step was binding the returns, setting equal weights, then running the bootstrap to simulate returns over a 4 week period.
+
+```{r cars}
+#Bind first row into return matrix
+small_returns = cbind(ClCl(IEFa), ClCl(DVYa), ClCl(VGKa))
+
+small_returns = as.matrix(na.omit(small_returns))
+N = nrow(small_returns)
+
+initial_wealth = 100000
+my_weights1 = c(1/3,1/3,1/3)
+
+set.seed(1234)
+
+small_sim = foreach(i=1:5000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weights = my_weights1
+  holdings = weights*total_wealth
+  n_days = 20
+  wealthtracker = rep(0,n_days)
+  for(today in 1:n_days) {
+    return.today = resample(small_returns,1,orig.ids=FALSE)
+    holdings = weights*total_wealth
+    holdings = holdings*(1+return.today)
+    total_wealth = sum(holdings)
+    holdings = weights*total_wealth
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+
+head(small_sim)
+hist(small_sim[,n_days], 25)
+
+mean(small_sim[,n_days])
+mean(small_sim[,n_days] - initial_wealth)
+hist(small_sim[,n_days]- initial_wealth, breaks=30)
+
+# 5% value at risk:
+quantile(small_sim[,n_days]- initial_wealth, prob=0.05)
+```
+### Despite our best efforts to reduce volatility, it is clear in our results that we were not successful. Our mean return over the 20 day period was $422.21. Not surprising given the fact that investments in fixed income and dividend stocks are generally not made for huge returns on equity, but rather for the provision of income and their relative safety in times of uncertainty. 
+
+### It should be noted, however, that we are in a period of unprecedented uncertainty and a time in which treasury securities' returns are historically low. Given these two facts, it is equally unsurprising that our VaR, or Value at Risk, a measure that estimates how much a set of investments might lose at the 5% confidence interval, is -$5,277.57. That is considerably more than our mean returns which shows that this is likely not a great portfolio to invest in at this time. Even though this is the least likely scenario, it is a measure that some investors put a lot of weight in given the relative increase in "black swan" events.
+
+### It should be noted of course that our distribution is centered around slightly positive returns, which means on average an investor can expect positive returns from this portfolio.
+
+## Choosing the Second Portfolio
+
+### In choosing the second portfolio, we sought to build on the first rather than select a whole new subset of securities. We did this to stay consistent with our effort to show the effect of diversification in a portfolio. For this portfolio, we added three more securities, EMB, XLF, and QLD. We saw these additions as relatively aggressive additions because of the outsized returns that we expect these securities to provide in the current market conditions.
+
+```{r pressure}
+
+medium_returns = cbind(ClCl(IEFa), ClCl(DVYa), ClCl(VGKa), ClCl(EMBa),
+                      ClCl(XLFa), ClCl(QLDa))
+
+medium_returns = as.matrix(na.omit(medium_returns))
+N = nrow(medium_returns)
+
+initial_wealth = 100000
+my_weights2 = c(1/6,1/6,1/6)
+
+set.seed(1234)
+
+medium_sim = foreach(i=1:5000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weights = my_weights2
+  holdings = weights*total_wealth
+  n_days = 20
+  wealthtracker = rep(0,n_days)
+  for(today in 1:n_days) {
+    return.today = resample(medium_returns,1,orig.ids=FALSE)
+    holdings = weights*total_wealth
+    holdings = holdings*(1+return.today)
+    total_wealth = sum(holdings)
+    holdings = weights*total_wealth
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+
+head(medium_sim)
+hist(medium_sim[,n_days], 25)
+
+mean(medium_sim[,n_days])
+mean(medium_sim[,n_days] - initial_wealth)
+hist(medium_sim[,n_days]- initial_wealth, breaks=30)
+
+# 5% value at risk:
+quantile(medium_sim[,n_days]- initial_wealth, prob=0.05)
+
+```
+
+### As we suspected, the returns did exceed the safe portfolio created in the first iteration. In fact, the mean returns, $1318.80 far exceeded the returns of the initial portfolio.
+
+### However, the VaR of this portfolio, -$7398.02 also exceeds the first portfolio. Considering the aggressive additions for this portfolio, that is not completely surprising, but it doesn't back up our hypothesis that additional securities, even aggressive securities, would reduce the overall risk of the portfolio. It should be noted of course that our distribution is centered around slightly positive returns, which means on average an investor can expect positive returns from this portfolio.
+
+##Selecting the Final Portfolio
+
+### For the final portfolio, we added all of the rest of our securities. 
+
+```{r}
+
+#Bind first row into return matrix
+all_returns = cbind(ClCl(EMBa), ClCl(IEFa), ClCl(DVYa), ClCl(VIXYa), ClCl(XLFa),
+                    ClCl(XLVa), ClCl(VGKa), ClCl(XLPa), ClCl(QLDa),  ClCl(IWNa))
+
+#Get rid of NA first row
+all_returns = as.matrix(na.omit(all_returns))
+N = nrow(all_returns)
+
+#plots pairs and historical returns
+pairs(all_returns)
+plot(all_returns[,1],type='l')
+
+
+initial_wealth = 100000
+my_weights3 = c(.1,.1,.1,.1,.1,.1,.1,.1,.1,.1)
+
+set.seed(1234)
+
+big_sim = foreach(i=1:5000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weights = my_weights3
+  holdings = my_weights3*total_wealth
+  n_days = 20
+  wealthtracker = rep(0,n_days)
+  for(today in 1:n_days) {
+    return.today = resample(all_returns,1,orig.ids=FALSE)
+    holdings = weights*total_wealth
+    holdings = holdings*(1+return.today)
+    total_wealth = sum(holdings)
+    holdings = weights*total_wealth
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+
+head(big_sim)
+hist(big_sim[,n_days], 25)
+
+mean(big_sim[,n_days])
+mean(big_sim[,n_days] - initial_wealth)
+hist(big_sim[,n_days]- initial_wealth, breaks=30)
+
+# 5% value at risk:
+quantile(big_sim[,n_days]- initial_wealth, prob=0.05)
+
+```
+
+### The results of our final portfolio provide the most interesting information. One, or several, of the securities added to our six security portfolio essentially erased some of the returns from our six security portfolio. On the other hand, our VaR was also reduced significantly. It should be noted of course that our distribution is centered around slightly positive returns, which means on average an investor can expect positive returns from this portfolio.
+
+### In fact, this portfolio created returns above the initial 3 stock portfolio, with risk less than the 6 stock portfolio. This generally follows the theory that higher returns result in higher risk. However, the higher risk associated with adding 7 additional securities to the intial portfolio is not significantly higher, which may show that we successfully diversified while increasing returns. This is certainly not conclusive, but a strong step towards creating an effective portfolio of ETFs.
