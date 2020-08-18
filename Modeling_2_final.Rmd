@@ -243,7 +243,7 @@ p4 + stat_summary(fun="mean", geom='bar', aes(colour=ArrDelay)) + theme(axis.tex
 Are there any airports to avoid? Based on average arrival delay, it seems that we should never fly to Des Moines (DSM) as it has the highest average delay by a wide margin. However, upon further inspection, there is only data from a single flight from DSM in the set. 
 <br>
 <br>
-```{r echo = FALSE, warning=FALSE}
+```{r echo = FALSE, warning=FALSE, out.width = "100%"}
 df2=fly_dest[!(fly_dest$Dest=="DSM" | fly_dest$Dest=="DTW" | fly_dest$Dest == "ORF"),]
 
 p4b = ggplot(aes(x=Dest, y=ArrDelay), data = df2)
@@ -318,7 +318,7 @@ Finally, what's causing all these delays anyway? Clearly, Carrier Delays, Late A
 <br>
 
 # Question 3 - Portfolio Modeling
-```{r, echo=FALSE, warning=FALSE}
+```{r, echo=FALSE, warning=FALSE, results='hide', message=FALSE}
 library(mosaic)
 library(quantmod)
 library(foreach)
