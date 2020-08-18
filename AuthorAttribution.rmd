@@ -1,0 +1,199 @@
+---
+title: "Author Attribution"
+author: "Christian Lee"
+date: "8/18/2020"
+output: html_document
+---
+
+# Step 1: 
+
+## The first step to predicting the author of a given text is to create the train set from the C50Train  set:
+```{r}
+library(tm)
+library(magrittr)
+library(slam)
+library(proxy)
+library(caret)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library('e1071')
+library(randomForest)
+library(ggplot2)
+library(class)
+
+train=Sys.glob('C:/Users/Christian/Documents/UT MSBA/Predictive Modelling/C50train/*')
+
+#Creating training dataset
+authortrain=NULL
+labels=NULL
+
+for (name in train)
+{ 
+  author=substring(name,first=50)
+  article=Sys.glob(paste0(name,'/*.txt'))
+  authortrain=append(authortrain,article)
+  labels=append(labels,rep(author,length(article)))
+}
+
+
+readerPlain <- function(fname)
+{
+  readPlain(elem=list(content=readLines(fname)), 
+            id=fname, language='en') 
+}
+
+comb = lapply(authortrain, readerPlain) 
+names(comb) = authortrain
+names(comb) = sub('.txt', '', names(comb))
+
+
+corp_train=Corpus(VectorSource(comb))
+
+```
+
+# Step 2: 
+
+## The next thing that we need to do is wrangle the data a bit to make the text comparable across files and remove any numbers or characters that might offset the models.
+
+## The second part of this step is to create our Document Term Matrix and then our TF-IDF matrix so that we can assess the number of occurrences of a particular word in any given document and across all documents.
+
+```{r}
+corp_train = tm_map(corp_train, content_transformer(tolower))
+corp_train = tm_map(corp_train, content_transformer(removeNumbers))
+corp_train = tm_map(corp_train, content_transformer(removePunctuation))
+corp_train = tm_map(corp_train, content_transformer(stripWhitespace))
+corp_train = tm_map(corp_train, content_transformer(removeWords),stopwords("en"))
+DTM_train = DocumentTermMatrix(corp_train)
+DTM_train
+
+DTM_tr=removeSparseTerms(DTM_train,.99)
+tf_idf = weightTfIdf(DTM_tr)
+DTM_train<-as.matrix(tf_idf)
+tf_idf
+
+```
+
+# Step 3: 
+
+## Do the same with the test data:
+
+```{r}
+test=Sys.glob('C:/Users/Christian/Documents/UT MSBA/Predictive Modelling/C50test/*')
+
+authortest=NULL
+labels1=NULL
+
+for (name in test)
+{ 
+  author1=substring(name,first=50)
+  article1=Sys.glob(paste0(name,'/*.txt'))
+  authortest=append(authortest,article1)
+  labels1=append(labels1,rep(author1,length(article1)))
+}
+
+
+comb1 = lapply(authortest, readerPlain) 
+names(comb1) = authortest
+names(comb1) = sub('.txt', '', names(comb1))
+
+
+corp_test=Corpus(VectorSource(comb1))
+
+
+corp_test = tm_map(corp_test, content_transformer(tolower))
+corp_test = tm_map(corp_test, content_transformer(removeNumbers))
+corp_test = tm_map(corp_test, content_transformer(removePunctuation))
+corp_test = tm_map(corp_test, content_transformer(stripWhitespace))
+corp_test = tm_map(corp_test, content_transformer(removeWords),stopwords("en"))
+
+DTM_tst=DocumentTermMatrix(corp_test,list(dictionary=colnames(DTM_tr)))
+tf_idf_tests = weightTfIdf(DTM_tst)
+DTM_test<-as.matrix(tf_idf_tests)
+tf_idf_tests
+```
+
+## Now that we have created our train and test data sets, we need to reduce the dimensionality of our data so that we can apply a PCA analysis. This is related to the "curse of dimensionality" which is a problem because when our data because high dimensional, the models tend to start overfitting the data which leads to high out of sample error.
+
+## We then run a PCA using prcomp, scale=True to ensure that our input data has been standardized and has a zero mean and variance of one. We then plot our PCA outcome which shows a reduction in variance. We also need to find how much of the variance can be explained by each component. If we print out the proportion of variance to sum of variances, we see that at PC730 we have about 75% of variance explained by the components.
+
+```{r}
+DTM_train1<-DTM_train[,which(colSums(DTM_train) != 0)] 
+DTM_test1<-DTM_test[,which(colSums(DTM_test) != 0)]
+
+DTM_test1 = DTM_test1[,intersect(colnames(DTM_test1),colnames(DTM_train1))]
+DTM_train1 = DTM_train1[,intersect(colnames(DTM_test1),colnames(DTM_train1))]
+
+mod_pca = prcomp(DTM_train1,scale=TRUE)
+pred_pca=predict(mod_pca,newdata = DTM_test1)
+
+
+plot(mod_pca,type='line')
+var <- apply(mod_pca$x, 2, var)
+prop <- var / sum(var)
+cumsum(prop)
+plot(cumsum(mod_pca$sdev^2/sum(mod_pca$sdev^2)))
+```
+
+# Step 4: 
+
+## Now that we have run the principal component analysis, we need to wrangle the data so that we can fit some proper classification models.
+
+```{r}
+train_class = data.frame(mod_pca$x[,1:730])
+train_class['author']=labels
+train_load = mod_pca$rotation[,1:730]
+test_class_pre <- scale(DTM_test1) %*% train_load
+test_class <- as.data.frame(test_class_pre)
+test_class['author']=labels1
+```
+
+# Step 5: 
+
+## Now that we have classification-ready training and test sets, and a sufficient principal component analysis that seeks to explain a large portion of the data, we can fit a tree model, specifically aggregating tree models using random forests. This way we can seek to reduce out of sample error as much as possible. 
+
+## we then seek to test the predictive power of our random forest model. We see that 
+
+```{r}
+set.seed(1)
+rf_model<-randomForest(as.factor(author)~.,data=train_class, mtry=6,importance=TRUE)
+
+rf_predict<-predict(rf_model,data=ts_class)
+rf_table<-as.data.frame(table(rf_predict,as.factor(test_class$author)))
+
+predicted<-rf_predict
+actual<-as.factor(test_class$author)
+
+temp<-as.data.frame(cbind(actual,predicted))
+temp$flag<-ifelse(temp$actual==temp$predicted,1,0)
+sum(temp$flag)
+sum(temp$flag)*100/nrow(temp)
+```
+
+# Step 6: 
+
+## Now that we have a random forest model, we need to run a second model. We chose to run a KNN classification, in large part because of the flexibility of a KNN model. We need to ensure that we don't overfit when choosing a K, but we were interested to see how the improved flexibility over a tree model might improve our out of sample error.
+
+```{r}
+train.X = subset(train_class, select = -c(author))
+test.X = subset(test_class,select=-c(author))
+train.author=as.factor(train_class$author)
+test.author=as.factor(test_class$author)
+
+set.seed(1)
+knn_pred=knn(train.X,test.X,train.author,k=5)
+
+temp_knn=as.data.frame(cbind(knn_pred,test.author))
+temp_knn_flag<-ifelse(as.integer(knn_pred)==as.integer(test.author),1,0)
+sum(temp_knn_flag)
+sum(temp_knn_flag)*100/nrow(temp_knn)
+
+comp<-data.frame("Model"=c("Random Forest","KNN"), "Test.accuracy"=c(75.6,33.84))
+comp
+ggplot(comp,aes(x=Model,y=Test.accuracy))+geom_col()
+```
+# Results:
+
+## Clearly we were wrong about our KNN model. The random forest, despite the relative rigidity of tree models, did much better than our KNN model. This is likely thanks to the aggregation of the trees which gives our random forest the ability to classify based on many more variations of the model than a KNN has access to.
+
+## It's possible that we could improve upon the KNN using various methods of finding the optimal K, we did alter the K used for the model and found that K=5 gave us the best out of sample error but usually K=5 when dealing with a dataset of this size is an example of overfitting. Because of this we are not confident that the KNN model is the best model to use.
